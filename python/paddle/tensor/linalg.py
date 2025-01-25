@@ -3387,7 +3387,7 @@ def qr(
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., M, N]`,
             where ... is zero or more batch dimensions. M and N can be arbitrary
-            positive number. The data type of x should be float32 or float64.
+            positive number. The data type of x supports float, double, complex64, complex128.
         mode (str, optional): A flag to control the behavior of qr.
             Suppose x's shape is `[..., M, N]` and denoting `K = min(M, N)`:
             If mode = "reduced", qr op will return reduced Q and R matrices,
@@ -3429,7 +3429,9 @@ def qr(
         else:
             return q, r
     else:
-        check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'qr')
+        check_variable_and_dtype(
+            x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'qr'
+        )
         check_type(mode, 'mode', str, 'qr')
         helper = LayerHelper('qr', **locals())
         q = helper.create_variable_for_type_inference(dtype=x.dtype)

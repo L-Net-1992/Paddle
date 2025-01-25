@@ -2650,7 +2650,7 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
     static std::once_flag set_output_holder_map;
     std::call_once(set_output_holder_map, [&]() {
       auto scope = executor_->GetScope();
-      VLOG(4) << "Set ouput tensor's holder.";
+      VLOG(4) << "Set output tensor's holder.";
       for (auto name : GetOutputNames()) {
         auto out_tensor = scope->FindVar(name)->GetMutable<phi::DenseTensor>();
 

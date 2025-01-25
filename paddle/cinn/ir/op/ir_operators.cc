@@ -533,24 +533,17 @@ static IndexExpr SimplifyDiv(const IndexExpr &lhs, const IndexExpr &rhs) {
         }
       }
     }
-
-    // S0 / 2 / 5 ===> S0 / 10.
-    if (lhsDiv) {
-      if (auto lrhs = lhsDiv->b().as_index().As<IntImm>()) {
-        return lhsDiv->a().as_index() /
-               IndexExpr(lrhs->type(), lrhs->value * rhsConst->value);
-      }
-    }
   } else {
     // dynamic branch!
-    if (common::IsDivisiblieBySymbol(lhs, rhs, ir::IrNodeTy::Div)) {
-      return common::SimplifySymbolicDivide(lhs, rhs, ir::IrNodeTy::Div);
+    if (auto res = DivByPartMul(lhs, rhs, ir::IrNodeTy::Div)) {
+      return res.value();
     }
+  }
 
-    // TODO(liujinnan): Deal dynamic shape, e.g. S0 / S1 / S2 ===> S0 / (S1 *
-    // S2). if (auto lhsDiv = lhs.As<Div>()) {
-    //   return lhsDiv->a().as_index() / (lhsDiv->b().as_index() * rhs);
-    // }
+  // static and dynamic common branch!
+  // S0 / S1 / 2 ===> S0 / (S1 * 2).
+  if (auto lhsDiv = lhs.As<Div>()) {
+    return lhsDiv->a().as_index() / (lhsDiv->b().as_index() * rhs);
   }
 
   return Div::Make(lhs, rhs);
@@ -593,8 +586,14 @@ static IndexExpr SimplifyMod(const IndexExpr &lhs, const IndexExpr &rhs) {
     }
   } else {
     // dynamic branch!
-    if (common::IsDivisiblieBySymbol(lhs, rhs, ir::IrNodeTy::Mod))
+    if (auto res = DivByPartMul(lhs, rhs, ir::IrNodeTy::Mod)) {
       return IndexExpr(0);
+    }
+  }
+
+  // static and dynamic common branch!
+  if (auto res = SimplifyComplexMod(lhs, rhs)) {
+    return res.value();
   }
 
   return Mod::Make(lhs, rhs);

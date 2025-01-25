@@ -54,7 +54,7 @@ class TestConstructModuleWithPyLayerOp(unittest.TestCase):
             self.assertEqual(len(value_list), 1)
             self.assertTrue(value_list[0].is_same(pylayer_op.operand_source(0)))
 
-    def test_fwd_only_with_multi_inputs_multi_outpus(self):
+    def test_fwd_only_with_multi_inputs_multi_outputs(self):
         """
         pseudocode:
 

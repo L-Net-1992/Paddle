@@ -295,8 +295,8 @@ def ParseYamlArgs(string):
     # attrs_list = [ [arg_name, arg_type, default_value, orig_position], ...]
     attrs_list = []
 
-    patten = re.compile(r',(?![^{]*\})')  # support int[] a={1,3}
-    args = re.split(patten, string.strip())
+    pattern = re.compile(r',(?![^{]*\})')  # support int[] a={1,3}
+    args = re.split(pattern, string.strip())
     args = [x.strip() for x in args]
     atype = r'((const )?\S+) '
     aname = r'(.*)'

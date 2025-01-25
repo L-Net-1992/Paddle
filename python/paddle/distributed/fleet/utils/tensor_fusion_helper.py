@@ -143,7 +143,7 @@ def flatten_dense_tensors(
         dtype=grad_dtype,
         device=get_current_device_type(),
         destination="0",
-        parm2align=_param2align,
+        param2align=_param2align,
     )
 
     for param in parameters:

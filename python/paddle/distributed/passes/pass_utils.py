@@ -817,7 +817,7 @@ def infer_chunk_id(op_idx, ops, with_dist=True):
                 return op.dist_attr.chunk_id
         else:
             if op.has_attr("chunk_id"):
-                return op.attrs()["chunk_id"]
+                return op.chunk_id
             else:
                 return -1
 
@@ -836,11 +836,8 @@ def infer_chunk_id(op_idx, ops, with_dist=True):
         for used_op in all_used_ops:
             if used_op.dist_attr and used_op.dist_attr.chunk_id != -1:
                 return used_op.dist_attr.chunk_id != -1
-            elif (
-                used_op.has_attr("chunk_id")
-                and used_op.attrs()["chunk_id"] != -1
-            ):
-                return used_op.attrs()["chunk_id"]
+            elif used_op.has_attr("chunk_id") and used_op.chunk_id != -1:
+                return used_op.chunk_id
 
     return -1
 
@@ -1966,7 +1963,7 @@ def _pir_split_matmul_grad_to_matmul(block, matmul_grad_id):
     # When the rank of input matrix is 3, MatmulGradKernel use reshape to fold the first two dimensions of x and out_grad (see FoldInitDims in matmul_grad_kernel_impl.h), and then calls blas.Matmul to calculate y_grad.
     # If we directly append matmul op to calculate y_grad without FoldInitDims, blas.BatchedGEMM is actually called in MatmulKernel, which has a larger cost than using blas.Matmul after dimension folding.
     # Therefore, we imitate MatmulGradKernel here by inserting reshape op before matmul.
-    chunk_id = matmul_grad_op.attrs()["chunk_id"]
+    chunk_id = matmul_grad_op.chunk_id
 
     paddle.pir.set_insertion_point_after(matmul_grad_op)
     new_x = paddle._C_ops.reshape(x, new_x_dims)

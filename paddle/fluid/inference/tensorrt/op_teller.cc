@@ -368,8 +368,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(8600)
 #else
           LOG(INFO)
-              << "Trt below 8.6 not support conv2d's filter is a intermedoate "
-                 "tensor in conv2d op, please upgarde your TensorRT.";
+              << "Trt below 8.6 not support conv2d's filter is a intermediate "
+                 "tensor in conv2d op, please upgrade your TensorRT.";
           return false;
 #endif
         }

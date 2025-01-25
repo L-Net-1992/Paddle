@@ -92,8 +92,10 @@ static std::optional<ir::IndexExpr> MergeMulModInner(
                                 mod_r_expr);
       if (overall_mult == inner_div_ptr->b().as_index() &&
           overall_mult == mod_r_expr &&
-          ProveDivisible(inner_div_ptr->a().as_index() - mod_l_expr,
-                         mod_r_expr)) {
+          (ProveDivisible(inner_div_ptr->a().as_index() - mod_l_expr,
+                          mod_r_expr) ||
+           inner_div_ptr->a().as_index() % overall_mult ==
+               mod_l_expr % mod_r_expr)) {
         // Found!
         return no_opt_sum.get()
                    ? no_opt_sum * mult_outer + inner_div_ptr->a().as_index()
@@ -211,10 +213,13 @@ std::optional<ir::IndexExpr> DivMulAddModCornerCase(const ir::IndexExpr& lhs,
   auto innerDiv = inner.As<ir::Div>();
   if (!innerDiv) return std::nullopt;
   if (innerDiv->b().as_index() == rhsMod->b().as_index() &&
-      innerDiv->b().as_index() == mult_outer &&
-      ProveDivisible(rhsMod->a().as_index() - innerDiv->a().as_index(),
-                     mult_outer)) {
-    return innerDiv->a().as_index();
+      innerDiv->b().as_index() == mult_outer) {
+    // The second condition is to adapt to the dynamic shape:
+    // f % (S0 * S1) / S0 * S0 + f % S0 ==> f % (S0 * S1)
+    if (ProveDivisible(rhsMod->a().as_index() - innerDiv->a().as_index(),
+                       mult_outer) ||
+        innerDiv->a().as_index() % mult_outer == rhs)
+      return innerDiv->a().as_index();
   }
   return std::nullopt;
 }
@@ -262,6 +267,8 @@ std::optional<ir::IndexExpr> SubModCornerCase(const ir::IndexExpr& lhs,
                                               const ir::IndexExpr& rhs,
                                               bool isDiv) {
   auto flatten = GetFlattenExprs<ir::Add>(lhs);
+
+  if (flatten.size() < 2) return std::nullopt;
 
   for (int64_t i = 0, e = flatten.size(); i < e; ++i) {
     // Check if negation

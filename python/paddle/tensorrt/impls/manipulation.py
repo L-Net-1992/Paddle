@@ -791,6 +791,28 @@ def tile_converter(network, paddle_op, inputs):
     return slice_layer.get_output(0)
 
 
+@converter_registry.register(
+    "pd_op.take_along_axis", trt_version="trt_version_ge=8.2"
+)
+def take_along_axis_converter(network, paddle_op, inputs):
+    axis = paddle_op.attrs().get("axis", 0)
+    input_tensor = inputs[0]
+    index_tensor = inputs[1]
+
+    input_dims = input_tensor.shape
+    if axis < 0:
+        axis += len(input_dims)
+
+    gather_layer = network.add_gather_v2(
+        input_tensor, index_tensor, trt.GatherMode.ELEMENT
+    )
+    gather_layer.axis = axis
+
+    output_tensor = gather_layer.get_output(0)
+
+    return output_tensor
+
+
 @converter_registry.register("pd_op.strided_slice", trt_version="8.x")
 def strided_slice_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]

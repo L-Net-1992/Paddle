@@ -303,7 +303,7 @@ std::vector<ir::Expr> CustomCallArgsForCublas(
                             b_height));
     }
   } else {
-    PADDLE_THROW(::common::errors::InvalidArgument("Unkown Matmul Setting!"));
+    PADDLE_THROW(::common::errors::InvalidArgument("Unknown Matmul Setting!"));
   }
 
   PADDLE_ENFORCE_EQ(
@@ -495,7 +495,7 @@ std::vector<ir::Expr> CustomCallArgsForBatchedCublas(
                             b_height));
     }
   } else {
-    PADDLE_THROW(::common::errors::InvalidArgument("Unkown Matmul Setting!"));
+    PADDLE_THROW(::common::errors::InvalidArgument("Unknown Matmul Setting!"));
   }
 
   PADDLE_ENFORCE_EQ(

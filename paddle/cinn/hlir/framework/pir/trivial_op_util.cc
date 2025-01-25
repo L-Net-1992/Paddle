@@ -994,13 +994,14 @@ ir::Expr ReshapeLoop(const ir::Expr& root,
   const auto block_name = block_realize.As<ir::ScheduleBlockRealize>()
                               ->schedule_block.As<ir::ScheduleBlock>()
                               ->name;
-  const auto shape_partion = fusion::PartionReshapeAxes(in_shape, out_shape);
+  const auto shape_partition =
+      fusion::PartitionReshapeAxes(in_shape, out_shape);
 
-  for (int idx = shape_partion.size() - 1; idx > 0; --idx) {
-    const auto& in_s = shape_partion[idx - 1].first;
-    const auto& in_e = shape_partion[idx].first;
-    const auto& out_s = shape_partion[idx - 1].second;
-    const auto& out_e = shape_partion[idx].second;
+  for (int idx = shape_partition.size() - 1; idx > 0; --idx) {
+    const auto& in_s = shape_partition[idx - 1].first;
+    const auto& in_e = shape_partition[idx].first;
+    const auto& out_s = shape_partition[idx - 1].second;
+    const auto& out_e = shape_partition[idx].second;
 
     std::vector<int> fuse_indices;
     for (int i = in_e - 1; i >= in_s; --i) {

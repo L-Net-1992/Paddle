@@ -367,7 +367,7 @@ void TileBroadcastTactic::Apply(ir::IRSchedule* sch,
   FuseAxisGroups(sch, block_id);
 
   // Do tiling.
-  // To achieve best performace, we apply different tiling tepmlates based on
+  // To achieve best performance, we apply different tiling templates based on
   // low_broadcast_size. The key is which axis to allocate inner loop:
   // 1. For small size:
   //        [B, P, B<=256]

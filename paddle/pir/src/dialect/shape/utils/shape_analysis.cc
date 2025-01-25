@@ -289,20 +289,35 @@ InferSymbolicShapeContext::SimplifyBroadcastForShapeOrData(
   auto SimplifyBroadcast =
       [&](const symbol::Broadcast<symbol::DimExpr>& bc) -> symbol::DimExpr {
     const symbol::List<symbol::DimExpr>& dim_exprs = bc.operands;
+    // 1. check if any dim_expr is greater than 1
     symbol::List<symbol::DimExpr> gtone_list;
     for (const auto& dim_expr : *dim_exprs) {
       if (IsGreatThanOne(dim_expr)) gtone_list->push_back(dim_expr);
     }
-    symbol::DimExpr simplified_dim_expr = bc;
-    if (gtone_list->size() == 1) {
-      simplified_dim_expr = gtone_list->at(0);
-    } else if (gtone_list->size() > 1) {
-      for (size_t i = 1; i < gtone_list->size(); i++) {
-        AddEqualCstr(gtone_list->at(0), gtone_list->at(i));
+    if (gtone_list->size() >= 1) {
+      if (gtone_list->size() > 1) {
+        for (size_t i = 1; i < gtone_list->size(); i++) {
+          AddEqualCstr(gtone_list->at(0), gtone_list->at(i));
+        }
       }
-      simplified_dim_expr = gtone_list->at(0);
+      return gtone_list->at(0);
     }
-    return simplified_dim_expr;
+
+    // compare each other dim_expr
+    for (size_t i = 0; i < dim_exprs->size() - 1; ++i) {
+      for (size_t j = i + 1; j < dim_exprs->size(); ++j) {
+        const auto compare_result =
+            symbol::Compare(dim_exprs->at(i), dim_exprs->at(j));
+        if (compare_result == symbol::DimExprCompareResult::GT) {
+          AddEqualCstr(dim_exprs->at(j), symbol::DimExpr(1));
+          return dim_exprs->at(i);
+        } else if (compare_result == symbol::DimExprCompareResult::LT) {
+          AddEqualCstr(dim_exprs->at(i), symbol::DimExpr(1));
+          return dim_exprs->at(j);
+        }
+      }
+    }
+    return bc;
   };
 
   auto DimExprsVisitor =

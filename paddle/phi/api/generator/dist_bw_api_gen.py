@@ -370,7 +370,7 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
     # <class 'backward_api_gen.BackwardAPI'>,
     # <class 'api_base.BaseAPI'>,
     # <class 'object'>
-    # if don't override it, the ForwardAPI's gene_output wiil be called
+    # if don't override it, the ForwardAPI's gene_output will be called
     def gene_output(
         self,
         out_dtype_list,

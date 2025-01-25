@@ -190,7 +190,7 @@ void CheckInferSymWithInferMeta(
                 << " [id:" << op->id() << "] "
                 << " carefully! "
                 << "shape[" << i
-                << "] of infer_sym_shape shoule be int64_t NOT a symbol!";
+                << "] of infer_sym_shape should be int64_t NOT a symbol!";
             LOG(ERROR) << print_stream.str();
             continue;
           }

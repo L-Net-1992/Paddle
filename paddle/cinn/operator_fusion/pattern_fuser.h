@@ -425,14 +425,17 @@ struct LoopFrameworkVisitor {
     // Horizontal Fusion must have the same loop framework.
     VLOG(4) << "Get loop framework for HorizontalFusionPattern.";
     auto base_pattern = pattern.padding_patterns_.back();
+    auto [base_loop, base_is_reduce] = GetLoopFramework(base_pattern.pattern);
     for (const auto& padding_pattern : pattern.padding_patterns_) {
-      if (std::holds_alternative<ReducePattern>(padding_pattern.pattern)) {
+      const auto& [loop, is_reduce] = GetLoopFramework(padding_pattern.pattern);
+      if (std::any_of(
+              is_reduce.begin(), is_reduce.end(), [](bool x) { return x; })) {
         base_pattern = padding_pattern;
+        base_loop = loop;
+        base_is_reduce = is_reduce;
         break;
       }
     }
-    const auto& [base_loop, base_is_reduce] =
-        GetLoopFramework(base_pattern.pattern);
     const auto& padding_vector = base_pattern.padding_pos;
     const auto& padded_size = base_loop.size() + padding_vector.size();
     LoopExprs loop(padded_size, 1);

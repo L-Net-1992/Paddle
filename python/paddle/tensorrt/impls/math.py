@@ -29,6 +29,7 @@ from paddle.tensorrt.converter_utils import (
     get_shape_tensor_element,
     trt_cast,
     trt_concat,
+    trt_equal,
     trt_expand,
     trt_max,
     trt_reshape,
@@ -400,6 +401,14 @@ def elementwise_pow_converter(network, paddle_op, inputs):
     )
 
 
+@converter_registry.register("pd_op.isnan", trt_version="8.x")
+def isnan_converter(network, paddle_op, inputs):
+    input_tensor = inputs[0]
+    equal_tensor = trt_equal(network, input_tensor, input_tensor)
+    layer = network.add_unary(equal_tensor, trt.UnaryOperation.NOT)
+    return layer.get_output(0)
+
+
 @converter_registry.register("pd_op.minimum", trt_version="8.x")
 def minimum_converter(network, paddle_op, inputs):
     min_layer = add_elementwise_layer(
@@ -414,3 +423,39 @@ def maximum_converter(network, paddle_op, inputs):
         network, paddle_op, inputs, trt.ElementWiseOperation.MAX
     )
     return max_layer
+
+
+@converter_registry.register("pd_op.greater_equal", trt_version="8.x")
+@converter_registry.register("pd_op.greater_equal_", trt_version="8.x")
+def greater_equal_converter(network, paddle_op, inputs):
+    greater_layer_output = add_elementwise_layer(
+        network, paddle_op, inputs, trt.ElementWiseOperation.GREATER
+    )
+    equal_layer_output = add_elementwise_layer(
+        network, paddle_op, inputs, trt.ElementWiseOperation.EQUAL
+    )
+    or_layer = add_elementwise_layer(
+        network,
+        paddle_op,
+        [greater_layer_output, equal_layer_output],
+        trt.ElementWiseOperation.OR,
+    )
+    return or_layer
+
+
+@converter_registry.register("pd_op.less_equal", trt_version="8.x")
+@converter_registry.register("pd_op.less_equal_", trt_version="8.x")
+def less_equal_converter(network, paddle_op, inputs):
+    less_layer_output = add_elementwise_layer(
+        network, paddle_op, inputs, trt.ElementWiseOperation.LESS
+    )
+    equal_layer_output = add_elementwise_layer(
+        network, paddle_op, inputs, trt.ElementWiseOperation.EQUAL
+    )
+    or_layer = add_elementwise_layer(
+        network,
+        paddle_op,
+        [less_layer_output, equal_layer_output],
+        trt.ElementWiseOperation.OR,
+    )
+    return or_layer

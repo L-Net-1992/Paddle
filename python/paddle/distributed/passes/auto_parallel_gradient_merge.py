@@ -693,7 +693,7 @@ def parse_program(
     return grad_to_gradient_merge
 
 
-def _find_trival_optimizer_ops(block):
+def _find_trivial_optimizer_ops(block):
     optimizer_ops = []
     for op in block.ops:
         if "adam" in op.name() or "sgd" in op.name():
@@ -774,7 +774,7 @@ def _append_scale_op_after_comm(block, optimizer_ops, k_steps):
 
 def _pir_append_scale_op(program, new_params_to_grads, k_steps):
     block = program.global_block()
-    optimizer_ops = _find_trival_optimizer_ops(block)
+    optimizer_ops = _find_trivial_optimizer_ops(block)
     if len(optimizer_ops) > 0:
         _append_scale_op_after_comm(block, optimizer_ops, k_steps)
     else:

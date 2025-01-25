@@ -410,6 +410,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ClipGradInferSpmd
   kernel :
     func : clip_grad
   backward : clip_double_grad

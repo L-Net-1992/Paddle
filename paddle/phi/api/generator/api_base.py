@@ -25,8 +25,8 @@ ORIGIN_PREFIX_TENSOR_NAME = 'origin_input_'
 def parse_plain_list(s: str, sep=",") -> list[str]:
     """Copy from `paddle/fluid/operators/generator/parse_utils.py`"""
     if sep == ",":
-        patten = re.compile(r',(?![^{]*\})')  # support "int[] a={1,2}"
-        items = re.split(patten, s.strip())
+        pattern = re.compile(r',(?![^{]*\})')  # support "int[] a={1,2}"
+        items = re.split(pattern, s.strip())
         items = [x.strip() for x in items]
         return items
     else:
@@ -172,8 +172,8 @@ class BaseAPI:
             ')'
         ), f"Args declaration should start with '(' and end with ')', please check the args of {api_name} in yaml."
         args_str = args_str[1:-1]
-        patten = re.compile(r',(?![^{]*\})')  # support int[] a={1,3}
-        args_list = re.split(patten, args_str.strip())
+        pattern = re.compile(r',(?![^{]*\})')  # support int[] a={1,3}
+        args_list = re.split(pattern, args_str.strip())
         args_list = [x.strip() for x in args_list]
         input_types_map = {
             'Tensor': 'const Tensor&',

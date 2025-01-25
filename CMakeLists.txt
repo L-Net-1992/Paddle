@@ -711,7 +711,7 @@ set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 add_definitions(-DPADDLE_DLL_EXPORT)
 
 if(ON_INFER)
-  # you can trun off the paddle fluid and inference lib by set ON_INFER=OFF
+  # you can turn off the paddle fluid and inference lib by set ON_INFER=OFF
   message(
     STATUS "On inference mode, will take place some specific optimization.")
   include(inference_lib)

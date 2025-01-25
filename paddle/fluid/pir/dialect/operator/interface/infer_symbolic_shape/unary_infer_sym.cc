@@ -2534,7 +2534,7 @@ bool PixelShuffleOpInferSymbolicShape(
 
   const bool channel_last = (data_format == "NHWC");
 
-  // the number of channels shoule be able to be divided by the upscale_factor
+  // the number of channels should be able to be divided by the upscale_factor
   // ^ 2.
   // TODO(Lans1ot, Buaa): add constrain for the channel number and
   // upscale_factor
@@ -3335,7 +3335,7 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
       op->operand_source(2).defining_op()->isa<paddle::dialect::FullOp>(),
       true,
       common::errors::InvalidArgument(
-          "Invalid input args : axis, pleace check"));
+          "Invalid input args : axis, please check"));
 
   int64_t axis = op->operand_source(2)
                      .defining_op<paddle::dialect::FullOp>()

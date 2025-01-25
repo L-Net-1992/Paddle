@@ -256,6 +256,7 @@ DECLARE_FILE_SYMBOLS(best_fit_allocator);
 DECLARE_FILE_SYMBOLS(aligned_allocator);
 DECLARE_FILE_SYMBOLS(pass_timing);
 DECLARE_FILE_SYMBOLS(op_compatible_info);
+DECLARE_FILE_SYMBOLS(sub_graph_detector);
 
 namespace paddle::pybind {
 
