@@ -974,16 +974,12 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     const float epsilon,
     const int groups,
     const std::string& data_format) {
-  std::vector<int64_t> c_axis;
-  if (data_format == "NCHW") {
-    c_axis = {1};
-  } else if (data_format == "NHWC") {
-    c_axis = {1, 3};
-  } else {
-    PADDLE_THROW(
-        common::errors::Unimplemented("Only support NCHW and NHWC format."));
-  }
   size_t rank = x.shape().size();
+  GroupNormDecompHelper<T> decomp_helper(x, scale, bias, groups, data_format);
+  const std::vector<int64_t>& c_axis = decomp_helper.GetReduceAxis();
+  const std::vector<int64_t>& scale_bias_new_shape =
+      decomp_helper.GetScaleBiasNewShape();
+
   if (rank < 3) {
     PADDLE_THROW(common::errors::Unimplemented(
         "Only support NCHW and NHWC format in rank higher or equal to 3. "
@@ -994,91 +990,31 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
   auto org_dtype = x.dtype();
   Tensor x_cast = ConvertToMT<T>(x);
 
-  Tensor x_dim_t;
-  Tensor out, mean_, var_;
-  if (has_dynamic_shape(x_cast.shape())) {
-    x_dim_t = shape64<T>(x_cast);
-    Tensor tar_shape;
-    if (data_format == "NCHW") {
-      tar_shape = get_slice<T>(x_dim_t, 0) * groups;
-      Tensor dim_1 = full<T>({1}, -1, x_dim_t.type());
-      tar_shape = concat<T>({tar_shape, dim_1});
-    } else {
-      Tensor N_shape = get_slice<T>(x_dim_t, 0);
-      Tensor dim_1 = full<T>({1}, -1, x_dim_t.type());
-      Tensor C_shape = get_slice<T>(x_dim_t, rank - 1);
-      Tensor dim_g = full<T>({1}, groups, x_dim_t.type());
-      Tensor dim_c_div_g = cast<T>(C_shape / dim_g, x_dim_t.type());
-      tar_shape = concat<T>({N_shape, dim_1, dim_g, dim_c_div_g});
-    }
-    x_cast = backend::reshape<T>(x_cast, tar_shape);
-    mean_ = mean_decomp<T>(x_cast, c_axis, true);
-    Tensor var_tmp_ =
-        mean_decomp<T>(x_cast * x_cast, c_axis, true) - mean_ * mean_;
-    var_ = maximum<T>(var_tmp_,
-                      backend::full_with_tensor<T>(
-                          shape64<T>(var_tmp_), 0, var_tmp_.dtype()));
-    Tensor var_inv =
-        rsqrt<T>(var_ + full_scalar<T>(epsilon, var_.dtype(), var_.place()));
-    Tensor res = (x_cast - mean_) * var_inv;
-    out = backend::reshape<T>(res, x_dim_t);
-  } else {
-    auto x_dim = x_cast.shape();
-    if (data_format == "NCHW") {
-      x_cast = reshape<T>(x_cast, {x_dim[0] * groups, -1});
-    } else {
-      int c_div_g = x_dim[rank - 1] / groups;
-      x_cast = reshape<T>(x_cast, {x_dim[0], -1, groups, c_div_g});
-    }
-    mean_ = mean_decomp<T>(x_cast, c_axis, true);
-    auto var_tmp_ =
-        mean_decomp<T>(x_cast * x_cast, c_axis, true) - mean_ * mean_;
-    var_ = maximum<T>(
-        var_tmp_,
-        full<T>(var_tmp_.shape(), 0, var_tmp_.dtype(), var_tmp_.place()));
-    auto var_inv =
-        rsqrt<T>(var_ + full_scalar<T>(epsilon, var_.dtype(), var_.place()));
-    auto res = (x_cast - mean_) * var_inv;
-    out = reshape<T>(res, x_dim);
-  }
+  auto x_dim = x_cast.shape();
+  x_cast = decomp_helper.Split(x_cast);
 
-  std::vector<int64_t> slice_bias_shape;
-  slice_bias_shape = {-1};
-  for (size_t i = 0; i < rank - 2; i++) {
-    slice_bias_shape.push_back(1);
-  }
+  auto mean_ = mean_decomp<T>(x_cast, c_axis, true);
+  auto var_tmp_ = mean_decomp<T>(x_cast * x_cast, c_axis, true) - mean_ * mean_;
+  auto var_ = maximum<T>(var_tmp_, full<T>({}, 0, var_tmp_.dtype()));
+  auto var_inv = rsqrt<T>(var_ + full_scalar<T>(epsilon, var_.dtype()));
+  auto out = (x_cast - mean_) * var_inv;
+
   Tensor scale_cast;
   if (scale) {
-    if (data_format == "NCHW") {
-      scale_cast = reshape<T>(scale.get(), slice_bias_shape);
-    } else {
-      scale_cast = scale.get();
-    }
+    scale_cast = reshape<T>(scale.get(), scale_bias_new_shape);
     scale_cast = ConvertToMT<T>(scale_cast);
     out = out * scale_cast;
   }
   Tensor bias_cast;
   if (bias) {
-    if (data_format == "NCHW") {
-      bias_cast = reshape<T>(bias.get(), slice_bias_shape);
-    } else {
-      bias_cast = bias.get();
-    }
+    bias_cast = reshape<T>(bias.get(), scale_bias_new_shape);
     bias_cast = ConvertToMT<T>(bias_cast);
     out = out + bias_cast;
   }
-  Tensor mean_out, var_out;
-  if (has_dynamic_shape(x_cast.shape())) {
-    Tensor x_shape = get_slice<T>(x_dim_t, 0);
-    Tensor dim_1 = full<T>({1}, groups, x_shape.type());
-    x_shape = concat<T>({x_shape, dim_1});
-    mean_out = backend::reshape<T>(mean_, x_shape);
-    var_out = backend::reshape<T>(var_, x_shape);
-  } else {
-    std::vector<int64_t> res_shape{x.shape().at(0), groups};
-    mean_out = reshape<T>(mean_, res_shape);
-    var_out = reshape<T>(var_, res_shape);
-  }
+
+  Tensor mean_out = squeeze<T>(mean_, c_axis);
+  Tensor var_out = squeeze<T>(var_, c_axis);
+  out = decomp_helper.Merge(out);
   out = ConvertToOrig<T>(out, org_dtype);
 
   return std::make_tuple(out, mean_out, var_out);
@@ -1420,6 +1356,28 @@ Tensor addmm_decomp(const Tensor& input,
 }
 
 template <typename T>
+Tensor baddbmm_decomp(const Tensor& input,
+                      const Tensor& x,
+                      const Tensor& y,
+                      const float beta,
+                      const float alpha) {
+  int batch_size = x.shape()[0];
+  std::vector<Tensor> batch_results;
+
+  for (int i = 0; i < batch_size; ++i) {
+    Tensor x_batch = get_slice<T>(x, i);
+    Tensor y_batch = get_slice<T>(y, i);
+    Tensor result = matmul<T>(x_batch, y_batch);
+    batch_results.push_back(result);
+  }
+
+  Tensor x_y_mat = concat<T>(batch_results);
+
+  return full_scalar<T>(alpha, x_y_mat.dtype()) * x_y_mat +
+         full_scalar<T>(beta, input.dtype()) * input;
+}
+
+template <typename T>
 Tensor eye_decomp(const paddle::Scalar& num_rows,
                   const paddle::Scalar& num_columns,
                   const DataType dtype,
@@ -1490,36 +1448,6 @@ Tensor diag_decomp(const Tensor& x,
     res = take_along_axis<T>(x_flat, indices, 0);
   }
   return ConvertToOrig<T>(res, x.dtype());
-}
-
-template <typename T>
-Tensor allclose_decomp(const Tensor& x,
-                       const Tensor& y,
-                       const paddle::Scalar& rtol,
-                       const paddle::Scalar& atol,
-                       const bool equal_nan) {
-  Tensor left = abs<T>(x - y);
-  Tensor min_diff_tensor;
-  if (has_dynamic_shape(y.shape())) {
-    min_diff_tensor =
-        backend::full_with_tensor<T>(shape64<T>(y), 1e-15, y.dtype());
-  } else {
-    min_diff_tensor = full<T>(y.shape(), 1e-15, y.dtype());
-  }
-  Tensor rtol_tensor = full_scalar<T>(rtol.to<double>(), y.dtype());
-  Tensor atol_tensor = full_scalar<T>(atol.to<double>(), y.dtype());
-  Tensor right = atol_tensor + rtol_tensor * y;
-  Tensor diff = abs<T>(right - left);
-  Tensor res_tmp = backend::logical_or<T>(less_equal<T>(left, right),
-                                          less_equal<T>(diff, min_diff_tensor));
-  Tensor res = backend::logical_or<T>(equal<T>(x, y), res_tmp);
-  if (equal_nan) {
-    Tensor x_nan = isnan<T>(x);
-    Tensor y_nan = isnan<T>(y);
-    res = backend::logical_or<T>(
-        res, backend::logical_or<T>(backend::logical_not<T>(x_nan), y_nan));
-  }
-  return backend::all<T>(res);
 }
 
 }  // namespace details

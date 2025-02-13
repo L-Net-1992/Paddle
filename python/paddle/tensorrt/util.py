@@ -78,7 +78,6 @@ def run_pir_pass(program, disable_passes=[], scope=None):
 
     pm = pir.PassManager(opt_level=4)
     pm.enable_print_statistics()
-    paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, program)
     if scope is None:
         scope = paddle.static.global_scope()
     place = paddle.CUDAPlace(0)
@@ -121,7 +120,6 @@ def run_pir_pass(program, disable_passes=[], scope=None):
 def run_trt_partition(program):
     pm = pir.PassManager(opt_level=4)
     pm.enable_print_statistics()
-    paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, program)
     pm.add_pass("trt_sub_graph_extract_pass", {})
     pm.run(program)
     return program
@@ -283,6 +281,8 @@ def weight_to_tensor(network, paddle_value, trt_tensor, use_op_name):
         "pd_op.depthwise_conv2d_transpose",
         "pd_op.fused_conv2d_add_act",
         "pd_op.affine_channel",
+        "pd_op.fused_bias_dropout_residual_layer_norm",
+        "pd_op.deformable_conv",
     ]
     if use_op_name in forbid_cast_op:
         return trt_tensor
